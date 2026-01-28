@@ -1,30 +1,17 @@
-import yfinance as yf
-import pandas as pd
 import requests
 import os
 
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
-TICKERS = ["NVDA", "TSLA", "AAPL", "AMD", "COIN", "PLTR", "MSFT", "META"]
 
-def enviar_telegram(mensaje):
+def test():
+    print(f"Intentando enviar mensaje a ID: {CHAT_ID}")
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    payload = {"chat_id": CHAT_ID, "text": mensaje, "parse_mode": "Markdown"}
-    requests.post(url, data=payload)
-
-def escanear():
-    for ticker in TICKERS:
-        try:
-            df = yf.download(ticker, period="60d", interval="1d", progress=False)
-            if len(df) < 30: continue
-            precio = df['Close'].iloc[-1]
-            vol_actual = df['Volume'].iloc[-1]
-            vol_medio = df['Volume'].rolling(window=20).mean().iloc[-1]
-            if true: # Ajustado a 1.2 para que sea más fácil que salte hoy
-                aviso = f"🚀 *ALERTA: {ticker}*\n💰 Precio: {precio:.2f}$\n📊 ¡Volumen alto detectado!"
-                enviar_telegram(aviso)
-        except: continue
+    payload = {"chat_id": CHAT_ID, "text": "¡HOLA! Si lees esto, tu bot está configurado al 100% 🚀"}
+    r = requests.post(url, data=payload)
+    print(f"Resultado: {r.status_code}")
+    print(f"Respuesta completa: {r.text}")
 
 if __name__ == "__main__":
-    escanear()
-  
+    test()
+    
