@@ -6,13 +6,22 @@ import os
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
-# LISTA AMPLIADA (Top Movers, Semiconductores, Cripto-mineras y Tech)
+# LISTA AGRESIVA: Semiconductores, IA, Minería Cripto, Space Tech y "Top Movers"
 TICKERS = [
-    "ATEYY", "RNECY", "IREN", "WULF", "MARA", "RIOT", # Advantest, Renesas, Minería Crypto
-    "ASTS", "PLTR", "SOUN", "BBAI", "RKLB",           # Space Tech e IA
-    "NVDA", "AMD", "AVGO", "SMCI", "ARM",             # Semiconductores Top
-    "TSLA", "COIN", "MSTR", "HOOD", "U",              # Volatilidad alta
-    "BTC-USD", "ETH-USD", "SOL-USD"                   # Cripto (24/7)
+    # --- Las que tú mencionaste ---
+    "ATEYY", "RNECY", "IREN", "ASTS", 
+    # --- IA y Datos ---
+    "NVDA", "PLTR", "SOUN", "BBAI", "SMCI", "AMD", "ARM", "AI",
+    # --- Minería Cripto y Blockchain (Muy volátiles) ---
+    "MARA", "RIOT", "WULF", "CLSK", "COIN", "MSTR",
+    # --- Space & Futuro ---
+    "RKLB", "LUNR", "SPCE", "IONQ",
+    # --- Agresivas USA ---
+    "TSLA", "UPST", "AFRM", "HOOD", "PYPL", "U", "NET", "SNOW",
+    # --- Penny Stocks / High Volatility ---
+    "SOXL", "TQQQ", "BITO", 
+    # --- Criptomonedas (24/7) ---
+    "BTC-USD", "ETH-USD", "SOL-USD", "PEPE-USD", "DOGE-USD"
 ]
 
 def enviar_telegram(mensaje):
@@ -20,37 +29,58 @@ def enviar_telegram(mensaje):
     payload = {"chat_id": CHAT_ID, "text": mensaje, "parse_mode": "Markdown"}
     requests.post(url, data=payload)
 
-def analizar_accion(ticker):
+def analizar(ticker):
     try:
-        # Descargamos datos de los últimos 2 días para comparar
-        df = yf.download(ticker, period="5d", interval="1d", progress=False)
-        if len(df) < 2: return
+        df = yf.download(ticker, period="60d", interval="1d", progress=False)
+        if len(df) < 30: return
 
+        # Cálculos básicos
         precio_hoy = df['Close'].iloc[-1]
         precio_ayer = df['Close'].iloc[-2]
-        cambio_porcentaje = ((precio_hoy - precio_ayer) / precio_ayer) * 100
+        cambio_diario = ((precio_hoy - precio_ayer) / precio_ayer) * 100
         
+        # Volumen
         vol_actual = df['Volume'].iloc[-1]
         vol_medio = df['Volume'].rolling(window=20).mean().iloc[-1]
 
-        # ESTRATEGIA: Si sube más de un 4% CON volumen alto
-        if cambio_porcentaje > 4.0 and vol_actual > (vol_medio * 1.2):
+        # RSI (Para detectar caídas excesivas o sobrecompra)
+        delta = df['Close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs)).iloc[-1]
+
+        # --- ESTRATEGIA 1: COHETE (SUBIDA FUERTE) ---
+        if cambio_diario > 5.0 and vol_actual > (vol_medio * 1.3):
             mensaje = (
-                f"🔥 *MOVIMIENTO DETECTADO: {ticker}*\n\n"
-                f"💰 *Precio:* {precio_hoy:.2f}$\n"
-                f"📈 *Subida:* +{cambio_porcentaje:.2f}%\n"
-                f"📊 *Volumen:* Muy superior a la media\n"
-                f"🚀 _Esta acción está rompiendo con fuerza hoy._"
+                f"🚀 *¡COHETE DETECTADO!* \n"
+                f"💎 *Activo:* {ticker}\n"
+                f"📈 *Subida:* +{cambio_diario:.2f}%\n"
+                f"📊 *Volumen:* EXPLOSIVO (x1.3+)\n"
+                f"🔥 *RSI:* {rsi:.1f}\n"
+                f"💰 *Precio:* {precio_hoy:.2f}$"
             )
             enviar_telegram(mensaje)
+
+        # --- ESTRATEGIA 2: OPORTUNIDAD (CAÍDA Y REBOTE) ---
+        elif rsi < 30:
+            mensaje = (
+                f"📉 *OPORTUNIDAD (Sobrevendido)*\n"
+                f"💎 *Activo:* {ticker}\n"
+                f"🛡️ *RSI:* {rsi:.1f} (Punto de rebote)\n"
+                f"💰 *Precio:* {precio_hoy:.2f}$\n"
+                f"⚠️ _Está muy barata. Vigila el giro al alza._"
+            )
+            enviar_telegram(mensaje)
+
     except Exception as e:
-        print(f"Error analizando {ticker}: {e}")
+        print(f"Error con {ticker}: {e}")
 
 def ejecutar():
-    print(f"Escaneando {len(TICKERS)} acciones seleccionadas...")
+    print(f"Escaneando radar de {len(TICKERS)} activos...")
     for t in TICKERS:
-        analizar_accion(t)
-    print("Escaneo finalizado.")
+        analizar(t)
+    print("Fin del escaneo.")
 
 if __name__ == "__main__":
     ejecutar()
