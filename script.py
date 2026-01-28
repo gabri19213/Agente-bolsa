@@ -20,7 +20,7 @@ def escanear():
             precio = df['Close'].iloc[-1]
             vol_actual = df['Volume'].iloc[-1]
             vol_medio = df['Volume'].rolling(window=20).mean().iloc[-1]
-            if vol_actual > (vol_medio * 1.2): # Ajustado a 1.2 para que sea más fácil que salte hoy
+            if true: # Ajustado a 1.2 para que sea más fácil que salte hoy
                 aviso = f"🚀 *ALERTA: {ticker}*\n💰 Precio: {precio:.2f}$\n📊 ¡Volumen alto detectado!"
                 enviar_telegram(aviso)
         except: continue
