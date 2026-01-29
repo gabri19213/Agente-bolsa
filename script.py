@@ -5,15 +5,14 @@ import os
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
-# CONFIGURACIÓN DEL RADAR - MÁS DE 70 ACCIONES
-SCT_IA_SEMI = ["NVDA", "AMD", "AVGO", "SMCI", "ARM", "ASML", "TSM", "INTC", "PLTR", "SOUN", "BBAI", "ATEYY", "RNECY"]
-SCT_CRYPTO = ["BTC-USD", "ETH-USD", "SOL-USD", "COIN", "MSTR", "MARA", "RIOT", "IREN", "WULF", "CLSK", "HIVE"]
-SCT_CRECIMIENTO = ["TSLA", "ASTS", "RKLB", "LUNR", "PLUG", "NIO", "XPEV", "LI", "RIVN", "LCID", "SOXL"]
-SCT_EUROPA = ["SAP.DE", "IFX.DE", "DAI.DE", "BMW.DE", "AIR.DE", "AD.AS", "SAN.MC", "ITX.MC", "TEF.MC", "FER.MC"]
-SCT_BIG_TECH = ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "NFLX", "ADBE", "PYPL", "HOOD", "UBER", "ABNB"]
-
-# Unimos todas las listas en una sola
-TODOS_LOS_TICKERS = SCT_IA_SEMI + SCT_CRYPTO + SCT_CRECIMIENTO + SCT_EUROPA + SCT_BIG_TECH
+# Lista masiva optimizada para Trade Republic (Tech, Europa, USA, Cripto y Penny Stocks)
+TICKERS = [
+    "NVDA", "AAPL", "TSLA", "AMD", "MSFT", "GOOGL", "AMZN", "META", "NFLX", "PLTR", # Big Tech
+    "ASML", "SAP.DE", "IFX.DE", "AIR.DE", "ATEYY", "RNECY", "SAN.MC", "ITX.MC",     # Europa y Japón
+    "IREN", "ASTS", "RKLB", "LUNR", "SOUN", "BBAI", "MARA", "RIOT", "CLSK",        # Agresivas/Crecimiento
+    "BTC-USD", "ETH-USD", "SOL-USD", "DOGE-USD", "PEPE-USD",                       # Cripto
+    "TQQQ", "SOXL", "COIN", "MSTR", "HOOD", "PYPL", "U", "NET", "SNOW"             # Volatilidad
+]
 
 def enviar_telegram(mensaje):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -22,29 +21,31 @@ def enviar_telegram(mensaje):
 
 def analizar(ticker):
     try:
-        # Traemos datos de 5 días para tener contexto de volumen y precio
-        df = yf.download(ticker, period="5d", interval="1d", progress=False)
+        # Traemos datos en intervalos de 15 min para captar el movimiento actual
+        stock = yf.Ticker(ticker)
+        df = stock.history(period="1d", interval="15m")
         if df.empty or len(df) < 2: return
 
+        nombre_empresa = stock.info.get('longName', ticker)
         precio_actual = df['Close'].iloc[-1]
-        variacion = ((precio_actual - df['Close'].iloc[-2]) / df['Close'].iloc[-2]) * 100
-        vol_actual = df['Volume'].iloc[-1]
-        vol_medio = df['Volume'].rolling(window=5).mean().iloc[-1]
+        precio_apertura = df['Open'].iloc[0]
+        variacion = ((precio_actual - precio_apertura) / precio_apertura) * 100
 
-        # REGLA DE ORO: Si sube más de un 4% y el volumen es alto, es señal de compra
-        if variacion > 4.0 and vol_actual > vol_medio:
+        # FILTRO: Si sube más de un 3% desde que abrió hoy
+        if variacion > 3.0:
             mensaje = (
-                f"🔥 *¡MOVIMIENTO DETECTADO!* ({ticker})\n"
-                f"💰 *Precio:* {precio_actual:.2f}$\n"
-                f"📈 *Variación:* +{variacion:.2f}%\n"
-                f"📊 *Volumen:* Por encima de la media\n"
-                f"🎯 _Acción detectada en el radar de Trade Republic._"
+                f"🚨 *ALERTA DE COMPRA EN TRADE REPUBLIC*\n\n"
+                f"🏢 *Empresa:* {nombre_empresa}\n"
+                f"🔑 *Ticker:* `{ticker}`\n"
+                f"💰 *Precio Actual:* {precio_actual:.2f}$\n"
+                f"📈 *Subida Hoy:* +{variacion:.2f}%\n\n"
+                f"📱 _Búscala ahora por su nombre o ticker en la app._"
             )
             enviar_telegram(mensaje)
     except:
         pass
 
 if __name__ == "__main__":
-    enviar_telegram(f"🔎 *Escáner Global Activo:* Analizando {len(TODOS_LOS_TICKERS)} activos...")
-    for t in TODOS_LOS_TICKERS:
+    # Escaneo silencioso: Solo avisa si encuentra algo, para no molestarte cada hora
+    for t in TICKERS:
         analizar(t)
