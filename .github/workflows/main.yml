@@ -1,28 +1,22 @@
-name: AgenteBolsa
-
+name: Super Radar de Bolsa
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '0 * * * *'
+    - cron: '0 * * * 1-5' # SE EJECUTA CADA HORA de lunes a viernes
+  workflow_dispatch:
 
 jobs:
-  ejecutar:
+  radares:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        
-      - name: Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-          
-      - name: Librerias
-        run: pip install yfinance pandas requests
-        
-      - name: Ejecutar
-        env:
+      - run: pip install yfinance pandas requests
+      - env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python script.py
-        
+        run: |
+          python script.py        # Ejecuta tu lista agresiva
+          python radar_global.py  # Ejecuta el escáner por horas
+          
