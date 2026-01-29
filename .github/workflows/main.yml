@@ -1,8 +1,8 @@
 name: Super Radar de Bolsa
 on:
   schedule:
-    - cron: '0 * * * 1-5' # SE EJECUTA CADA HORA de lunes a viernes
-  workflow_dispatch:
+    - cron: '0 * * * 1-5' # Cada hora de Lunes a Viernes
+  workflow_dispatch:      # Botón manual
 
 jobs:
   radares:
@@ -17,6 +17,7 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          python script.py        # Ejecuta tu lista agresiva
-          python radar_global.py  # Ejecuta el escáner por horas
+          python script.py
+          python radar_global.py
+          python radar_microcaps.py
           
