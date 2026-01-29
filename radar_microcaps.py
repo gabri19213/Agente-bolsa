@@ -5,7 +5,7 @@ import os
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
-# Lista optimizada (he quitado las que dan error como PEPE para limpiar el log)
+# Lista de Micro-Caps y activos volátiles
 MICRO_CAPS = [
     "IREN", "WULF", "CLSK", "CIFR", "BTBT", "HIVE", "CAN",
     "ASTS", "RKLB", "LUNR", "SIDU", "QUBT", "RGTI",
@@ -22,10 +22,18 @@ def enviar_telegram(mensaje):
     payload = {"chat_id": CHAT_ID, "text": mensaje, "parse_mode": "Markdown"}
     requests.post(url, data=payload)
 
+def obtener_nombre_detallado(ticker):
+    try:
+        t = yf.Ticker(ticker)
+        # Intentamos sacar el nombre largo, si falla, devolvemos el ticker
+        return t.info.get('longName', ticker)
+    except:
+        return ticker
+
 def escanear():
     print(f"🕵️ Iniciando radar sobre {len(MICRO_CAPS)} activos...")
     try:
-        # Descarga masiva (mucho más rápido)
+        # Descarga masiva para mayor velocidad
         data = yf.download(MICRO_CAPS, period="2d", interval="1h", progress=False)['Close']
         alertas_enviadas = 0
 
@@ -38,22 +46,25 @@ def escanear():
             p_previa = precios.iloc[-2]
             variacion = ((p_actual - p_previa) / p_previa) * 100
             
-            # Bajamos el filtro al 1.5% para que sea más fácil que te avise ahora
+            # Filtro: 1.5% de subida en la última hora
             if variacion > 1.5:
-                enviar_telegram(f"🧨 *MICRO-CAP:* {ticker}\n📈 *Subida 1h:* +{variacion:.2f}%\n💰 *Precio:* {p_actual:.2f}$")
+                nombre_real = obtener_nombre_detallado(ticker)
+                
+                mensaje = (
+                    f"🧨 *ALERTA MICRO-CAP (1H)*\n\n"
+                    f"🏢 *Empresa:* {nombre_real}\n"
+                    f"🆔 *Ticker:* `{ticker}`\n"
+                    f"📈 *Subida 1h:* +{variacion:.2f}%\n"
+                    f"💰 *Precio:* {p_actual:.2f}$\n\n"
+                    f"🚀 _Movimiento agresivo detectado. ¡Ojo!_"
+                )
+                enviar_telegram(mensaje)
                 alertas_enviadas += 1
 
-        # MENSAJE DE CONTROL (Para que sepas que ha terminado)
-        if alertas_enviadas == 0:
-            print("Escaneo finalizado sin alertas.")
-            # Descomenta la línea de abajo si quieres que te avise aunque no encuentre nada:
-            # enviar_telegram("✅ Escaneo completado. Mercado tranquilo.")
-        else:
-            print(f"Escaneo finalizado. {alertas_enviadas} alertas enviadas.")
+        print(f"Escaneo finalizado. {alertas_enviadas} alertas enviadas.")
 
     except Exception as e:
         print(f"Error general: {e}")
 
 if __name__ == "__main__":
     escanear()
-    
