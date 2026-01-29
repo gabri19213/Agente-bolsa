@@ -5,20 +5,16 @@ import os
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
-# LISTA EXPANDIDA DE MICRO-CAPS Y ACCIONES VOLÁTILES (Aproximadamente 100)
+# Lista optimizada (he quitado las que dan error como PEPE para limpiar el log)
 MICRO_CAPS = [
-    "IREN", "WULF", "CLSK", "CIFR", "BTBT", "ANY", "SDIG", "HIVE", "CAN", # Minería/Cripto
-    "ASTS", "RKLB", "LUNR", "SIDU", "LLAP", "VLD", "QUBT", "RGTI",         # Space/Quantum
-    "SOUN", "BBAI", "AISP", "GFAI", "VERI", "CXAI", "TRNR", "UPST",         # IA/Software
-    "MULN", "LCID", "PSNY", "NKLA", "QS", "CHPT", "BLNK", "EVGO",         # EV/Energía
-    "NVAX", "BNTX", "MRNA", "SRPT", "CRSP", "EDIT", "BEAM", "NTLA",         # BioTech
-    "PLUG", "FCEL", "BE", "RUN", "SPWR", "ENPH", "SEDG", "FSLR",            # Solar/H2
-    "HOOD", "SOFI", "AFRM", "NU", "MQ", "AVDX", "FLYW",                     # Fintech
-    "DKNG", "PENN", "RUSHB", "GENI", "BETZ",                                # Betting
-    "GME", "AMC", "KOSS", "BB", "TLRY", "CGC", "ACB", "SNDL",               # Meme/Cannabis
-    "RIVN", "FSRN", "JOBY", "ACHR", "EVTL", "EH",                           # Movilidad/Drones
-    "S", "SENT", "PANW", "FTNT", "CRWD", "OKTA", "ZS",                      # CyberSecurity
-    "U", "RBLX", "MTTR", "TTD", "SNAP", "PINS"                              # Metaverso/Ads
+    "IREN", "WULF", "CLSK", "CIFR", "BTBT", "HIVE", "CAN",
+    "ASTS", "RKLB", "LUNR", "SIDU", "QUBT", "RGTI",
+    "SOUN", "BBAI", "AISP", "GFAI", "UPST",
+    "MULN", "LCID", "NKLA", "QS", "CHPT",
+    "PLUG", "FCEL", "BE", "RUN", "ENPH",
+    "HOOD", "SOFI", "AFRM", "NU",
+    "GME", "AMC", "TLRY", "CGC",
+    "BTC-USD", "ETH-USD", "SOL-USD"
 ]
 
 def enviar_telegram(mensaje):
@@ -26,14 +22,15 @@ def enviar_telegram(mensaje):
     payload = {"chat_id": CHAT_ID, "text": mensaje, "parse_mode": "Markdown"}
     requests.post(url, data=payload)
 
-def escanear_microcaps():
-    print(f"🕵️ Escaneando {len(MICRO_CAPS)} Micro-Caps...")
-    
-    # Descargamos los datos en un solo bloque para no ser bloqueados
-    data = yf.download(MICRO_CAPS, period="2d", interval="1h", progress=False)['Close']
-    
-    for ticker in MICRO_CAPS:
-        try:
+def escanear():
+    print(f"🕵️ Iniciando radar sobre {len(MICRO_CAPS)} activos...")
+    try:
+        # Descarga masiva (mucho más rápido)
+        data = yf.download(MICRO_CAPS, period="2d", interval="1h", progress=False)['Close']
+        alertas_enviadas = 0
+
+        for ticker in MICRO_CAPS:
+            if ticker not in data: continue
             precios = data[ticker].dropna()
             if len(precios) < 2: continue
             
@@ -41,17 +38,22 @@ def escanear_microcaps():
             p_previa = precios.iloc[-2]
             variacion = ((p_actual - p_previa) / p_previa) * 100
             
-            # Filtro agresivo: Avísame si sube más del 3% en UNA HORA
-            if variacion > 3.0:
-                mensaje = (
-                    f"🧨 *EXPLOSIÓN MICRO-CAP: {ticker}*\n\n"
-                    f"📈 *Movimiento 1h:* +{variacion:.2f}%\n"
-                    f"💰 *Precio:* {p_actual:.2f}$\n"
-                    f"🚨 _Volatilidad extrema detectada._"
-                )
-                enviar_telegram(mensaje)
-        except:
-            continue
+            # Bajamos el filtro al 1.5% para que sea más fácil que te avise ahora
+            if variacion > 1.5:
+                enviar_telegram(f"🧨 *MICRO-CAP:* {ticker}\n📈 *Subida 1h:* +{variacion:.2f}%\n💰 *Precio:* {p_actual:.2f}$")
+                alertas_enviadas += 1
+
+        # MENSAJE DE CONTROL (Para que sepas que ha terminado)
+        if alertas_enviadas == 0:
+            print("Escaneo finalizado sin alertas.")
+            # Descomenta la línea de abajo si quieres que te avise aunque no encuentre nada:
+            # enviar_telegram("✅ Escaneo completado. Mercado tranquilo.")
+        else:
+            print(f"Escaneo finalizado. {alertas_enviadas} alertas enviadas.")
+
+    except Exception as e:
+        print(f"Error general: {e}")
 
 if __name__ == "__main__":
-    escanear_microcaps()
+    escanear()
+    
